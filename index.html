@@ -1,417 +1,441 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Sparkles, 
-  Send, 
-  Loader2, 
-  PlayCircle, 
-  Info, 
-  ChevronRight,
-  Monitor, 
-  MessageSquare, 
-  Briefcase, 
-  Zap 
-} from 'lucide-react';
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 영상 제작 마스터 가이드</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM CDN -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <!-- Babel CDN (for JSX) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Lucide Icons Library -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700;900&display=swap');
+        body { font-family: 'Pretendard', sans-serif; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+    <div id="root"></div>
 
-const App = () => {
-  const [activeTab, setActiveTab] = useState('1');
-  const [userPrompt, setUserPrompt] = useState('');
-  const [aiResult, setAiResult] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
+    <script type="text/babel">
+        const { useState, useEffect } = React;
 
-  const apiKey = ""; // API Key provided by environment
+        // 아이콘 컴포넌트 라이브러리 역할을 하는 SVG 헬퍼
+        const Icon = ({ name, size = 18, className = "" }) => {
+            useEffect(() => {
+                lucide.createIcons();
+            }, []);
+            return <i data-lucide={name} style={{ width: size, height: size }} className={className}></i>;
+        };
 
-  // Gemini API 호출 함수 (지수 백오프 적용)
-  const fetchGemini = async (prompt) => {
-    const systemPrompt = `당신은 2026년 최신 AI 영상 제작 전문가입니다. 
-    사용자가 만들고자 하는 영상의 주제나 기획안을 듣고 다음 내용을 포함하여 조언해주세요:
-    1. 추천 제작 툴 조합 (예: Higgsfield + Vrew)
-    2. 해당 프로젝트를 위한 핵심 AI 생성 프롬프트 전략
-    3. 스터디 그룹 예산(30만원) 내에서의 효율적인 제작 팁
-    
-    답변은 친절하고 전문적인 한국어로 작성해주세요.`;
+        const App = () => {
+            const [activeTab, setActiveTab] = useState('1');
+            const [userPrompt, setUserPrompt] = useState('');
+            const [aiResult, setAiResult] = useState(null);
+            const [isLoading, setIsLoading] = useState(false);
+            const [error, setError] = useState(null);
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-    
-    const payload = {
-      contents: [{ parts: [{ text: prompt }] }],
-      systemInstruction: { parts: [{ text: systemPrompt }] }
-    };
+            const apiKey = ""; // API Key provided by environment
 
-    let delay = 1000;
-    for (let i = 0; i < 5; i++) {
-      try {
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        if (!response.ok) throw new Error('API 호출 실패');
-        const data = await response.json();
-        return data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      } catch (err) {
-        if (i === 4) throw err;
-        await new Promise(resolve => setTimeout(resolve, delay));
-        delay *= 2;
-      }
-    }
-  };
+            const fetchGemini = async (prompt) => {
+                const systemPrompt = `당신은 2026년 최신 AI 영상 제작 전문가입니다. 
+                사용자가 만들고자 하는 영상의 주제나 기획안을 듣고 다음 내용을 포함하여 조언해주세요:
+                1. 추천 제작 툴 조합 (예: Higgsfield + Vrew)
+                2. 해당 프로젝트를 위한 핵심 AI 생성 프롬프트 전략
+                3. 스터디 그룹 예산(30만원) 내에서의 효율적인 제작 팁
+                
+                답변은 친절하고 전문적인 한국어로 작성해주세요.`;
 
-  const handleConsulting = async () => {
-    if (!userPrompt.trim()) return;
-    setIsLoading(true);
-    setError(null);
-    try {
-      const result = await fetchGemini(userPrompt);
-      setAiResult(result);
-    } catch (err) {
-      setError("AI 컨설턴트와 연결하는 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+                
+                const payload = {
+                    contents: [{ parts: [{ text: prompt }] }],
+                    systemInstruction: { parts: [{ text: systemPrompt }] }
+                };
 
-  // 데이터 정의
-  const tools = [
-    { name: 'Higgsfield', category: '멀티 플랫폼', features: 'Kling, Veo 등 15개 모델 통합 사용', cost: '$99 (Ultra)', url: 'https://higgsfield.ai' },
-    { name: 'Genspark', category: '워크플로우', features: '기획-대본-영상 에이전트 자동화', cost: '$24.99 (Plus)', url: 'https://genspark.ai' },
-    { name: 'Vrew (브루)', category: '편집/자막', features: '한국어 자동 자막 및 문서형 컷 편집', cost: '24,000원 (Standard)', url: 'https://vrew.ai' },
-    { name: 'Runway', category: '전문가용', features: '정교한 수동 제어 및 부분 수정(Gen-4.5)', cost: '$35 (Pro)', url: 'https://runwayml.com' },
-    { name: 'Kling AI', category: '스토리텔링', features: '10분 생성 및 동작 복제 특화(3.0)', cost: '$35 (Pro)', url: 'https://kling.ai' },
-    { name: 'Google Veo 3.1', category: '시네마틱', features: '4K 고해상도 및 오디오 동시 생성', cost: '$19.99 (Pro)', url: 'https://deepmind.google' },
-    { name: 'Adobe Firefly', category: '상업 안전', features: '저작권 안전 및 배경 확장/수정', cost: '$9.99 (Premium)', url: 'https://adobe.com' },
-    { name: 'HeyGen', category: '비즈니스', features: 'AI 아바타 및 다국어 립싱크 발표', cost: '$29 (Creator)', url: 'https://heygen.com' },
-    { name: 'Luma AI', category: '리얼리즘', features: '역동적인 카메라 무빙 및 물리 묘사', cost: '$29.99 (Plus)', url: 'https://lumalabs.ai' },
-    { name: 'Pika / Hailuo', category: '특수효과', features: '사물 변형 및 세밀한 표정 묘사', cost: '$28~35', url: 'https://pika.art' }
-  ];
+                let delay = 1000;
+                for (let i = 0; i < 5; i++) {
+                    try {
+                        const response = await fetch(url, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        if (!response.ok) throw new Error('API 호출 실패');
+                        const data = await response.json();
+                        return data?.candidates?.[0]?.content?.parts?.[0]?.text;
+                    } catch (err) {
+                        if (i === 4) throw err;
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        delay *= 2;
+                    }
+                }
+            };
 
-  const tutorials = [
-    { title: 'Vrew: AI로 자막/편집 10배 빠르게 하기', link: 'https://www.youtube.com/watch?v=rgckdBkyMcU' },
-    { title: 'Higgsfield: 15종 AI 모델 한 번에 정복', link: 'https://www.youtube.com/watch?v=R7GZjRMsrzM' },
-    { title: 'Kling AI: 10분 영상 및 동작 복제 가이드', link: 'https://www.youtube.com/watch?v=4f1kEWcc50g' },
-    { title: 'HeyGen: 내 얼굴 AI 아바타 제작 실전', link: 'https://www.youtube.com/watch?v=wtYcRjqdnXU' },
-    { title: 'Adobe Firefly: 프리미어 연동 수정 팁', link: 'https://www.youtube.com/watch?v=pnQgwgVPlDE' }
-  ];
+            const handleConsulting = async () => {
+                if (!userPrompt.trim()) return;
+                setIsLoading(true);
+                setError(null);
+                try {
+                    const result = await fetchGemini(userPrompt);
+                    setAiResult(result);
+                } catch (err) {
+                    setError("AI 컨설턴트와 연결하는 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+                } finally {
+                    setIsLoading(false);
+                }
+            };
 
-  const TabButton = ({ id, label, icon: Icon }) => (
-    <button 
-      onClick={() => setActiveTab(id)}
-      className={`px-6 py-4 font-bold text-sm transition-all border-b-2 flex items-center gap-2 whitespace-nowrap ${activeTab === id ? 'border-blue-600 text-blue-600 bg-blue-50/50' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
-    >
-      {Icon && <Icon size={18} />}
-      {label}
-    </button>
-  );
+            const tools = [
+                { name: 'Higgsfield', category: '멀티 플랫폼', features: 'Kling, Veo 등 15개 모델 통합 사용', cost: '$99 (Ultra)', url: 'https://higgsfield.ai' },
+                { name: 'Genspark', category: '워크플로우', features: '기획-대본-영상 에이전트 자동화', cost: '$24.99 (Plus)', url: 'https://genspark.ai' },
+                { name: 'Vrew (브루)', category: '편집/자막', features: '한국어 자동 자막 및 문서형 컷 편집', cost: '24,000원 (Standard)', url: 'https://vrew.ai' },
+                { name: 'Runway', category: '전문가용', features: '정교한 수동 제어 및 부분 수정(Gen-4.5)', cost: '$35 (Pro)', url: 'https://runwayml.com' },
+                { name: 'Kling AI', category: '스토리텔링', features: '10분 생성 및 동작 복제 특화(3.0)', cost: '$35 (Pro)', url: 'https://kling.ai' },
+                { name: 'Google Veo 3.1', category: '시네마틱', features: '4K 고해상도 및 오디오 동시 생성', cost: '$19.99 (Pro)', url: 'https://deepmind.google' },
+                { name: 'Adobe Firefly', category: '상업 안전', features: '저작권 안전 및 배경 확장/수정', cost: '$9.99 (Premium)', url: 'https://adobe.com' },
+                { name: 'HeyGen', category: '비즈니스', features: 'AI 아바타 및 다국어 립싱크 발표', cost: '$29 (Creator)', url: 'https://heygen.com' },
+                { name: 'Luma AI', category: '리얼리즘', features: '역동적인 카메라 무빙 및 물리 묘사', cost: '$29.99 (Plus)', url: 'https://lumalabs.ai' },
+                { name: 'Pika / Hailuo', category: '특수효과', features: '사물 변형 및 세밀한 표정 묘사', cost: '$28~35', url: 'https://pika.art' }
+            ];
 
-  return (
-    <div className="min-h-screen bg-slate-50 p-4 md:p-8 font-sans text-slate-900">
-      <div className="max-w-6xl mx-auto bg-white shadow-2xl rounded-3xl overflow-hidden border border-slate-200">
-        
-        {/* Header */}
-        <div className="bg-gradient-to-br from-blue-700 via-indigo-800 to-blue-900 p-8 text-white relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl"></div>
-          <div className="relative z-10">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="bg-blue-400/20 text-blue-100 px-3 py-1 rounded-full text-xs font-bold border border-blue-400/30">2026 Edition</span>
-              <span className="bg-amber-400 text-slate-900 px-3 py-1 rounded-full text-xs flex items-center gap-1 font-bold">
-                <Sparkles size={14} /> AI CONSULTANT
-              </span>
-            </div>
-            <h1 className="text-4xl font-black mb-2 tracking-tight">AI 영상 제작 마스터 가이드</h1>
-            <p className="text-blue-100 opacity-90 text-lg font-medium">7인 스터디 그룹을 위한 최적의 툴 선정 및 프로젝트 컨설팅</p>
-          </div>
-        </div>
+            const tutorials = [
+                { title: 'Vrew: AI로 자막/편집 10배 빠르게 하기', link: 'https://www.youtube.com/watch?v=rgckdBkyMcU' },
+                { title: 'Higgsfield: 15종 AI 모델 한 번에 정복', link: 'https://www.youtube.com/watch?v=R7GZjRMsrzM' },
+                { title: 'Kling AI: 10분 영상 및 동작 복제 가이드', link: 'https://www.youtube.com/watch?v=4f1kEWcc50g' },
+                { title: 'HeyGen: 내 얼굴 AI 아바타 제작 실전', link: 'https://www.youtube.com/watch?v=wtYcRjqdnXU' },
+                { title: 'Adobe Firefly: 프리미어 연동 수정 팁', link: 'https://www.youtube.com/watch?v=pnQgwgVPlDE' }
+            ];
 
-        {/* Navigation Tabs */}
-        <div className="flex border-b bg-white sticky top-0 z-20 overflow-x-auto no-scrollbar">
-          <TabButton id="1" label="주요 툴 비교" icon={Monitor} />
-          <TabButton id="2" label="플랫폼 vs 개별툴" icon={Zap} />
-          <TabButton id="3" label="한국어 튜토리얼" icon={PlayCircle} />
-          <TabButton id="4" label="추천 운영안" icon={Briefcase} />
-          <TabButton id="5" label="✨ AI 컨설턴트" icon={MessageSquare} />
-        </div>
+            const TabButton = ({ id, label, iconName }) => (
+                <button 
+                    onClick={() => setActiveTab(id)}
+                    className={`px-6 py-4 font-bold text-sm transition-all border-b-2 flex items-center gap-2 whitespace-nowrap ${activeTab === id ? 'border-blue-600 text-blue-600 bg-blue-50/50' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'}`}
+                >
+                    <Icon name={iconName} size={18} />
+                    {label}
+                </button>
+            );
 
-        {/* Content Area */}
-        <div className="p-6 md:p-10">
-          
-          {/* Slide 1: Comparison Table */}
-          {activeTab === '1' && (
-            <div className="animate-in slide-in-from-bottom-4 duration-500">
-              <div className="flex items-center justify-between mb-8">
-                <h2 className="text-2xl font-bold flex items-center gap-3">
-                  <span className="bg-blue-600 text-white w-10 h-10 rounded-xl flex items-center justify-center text-lg">01</span> 
-                  2026년 AI 영상 제작 툴 통합 비교
-                </h2>
-              </div>
-              <div className="overflow-x-auto rounded-2xl border border-slate-200 shadow-sm">
-                <table className="w-full text-sm text-left">
-                  <thead className="bg-slate-50 text-slate-600 border-b">
-                    <tr>
-                      <th className="px-6 py-4 font-bold uppercase tracking-wider">카테고리</th>
-                      <th className="px-6 py-4 font-bold uppercase tracking-wider">제작 툴</th>
-                      <th className="px-6 py-4 font-bold uppercase tracking-wider">핵심 특징</th>
-                      <th className="px-6 py-4 font-bold uppercase tracking-wider text-right">월 요금 (Monthly)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {tools.map((tool, idx) => (
-                      <tr key={idx} className="hover:bg-blue-50/30 transition-colors group">
-                        <td className="px-6 py-4 font-medium text-slate-500">{tool.category}</td>
-                        <td className="px-6 py-4">
-                          <div className="flex flex-col">
-                            <span className="font-bold text-slate-900 group-hover:text-blue-700 transition-colors">{tool.name}</span>
-                            <a href={tool.url} target="_blank" className="text-[10px] text-blue-500 hover:underline">Official Site →</a>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-slate-600 leading-relaxed">{tool.features}</td>
-                        <td className="px-6 py-4 font-bold text-blue-700 text-right">{tool.cost}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="mt-6 flex items-start gap-2 bg-amber-50 p-4 rounded-xl text-amber-800 text-sm border border-amber-100">
-                <Info size={18} className="shrink-0 mt-0.5" />
-                <p><strong>참고:</strong> OpenAI Sora는 2026년 4월 서비스 종료됨에 따라 비교에서 제외되었습니다. Sora의 강력한 대안으로 Google Veo 3.1과 Kling AI가 꼽히고 있습니다.</p>
-              </div>
-            </div>
-          )}
+            return (
+                <div className="min-h-screen bg-slate-50 p-4 md:p-8">
+                    <div className="max-w-6xl mx-auto bg-white shadow-2xl rounded-3xl overflow-hidden border border-slate-200">
+                        
+                        {/* Header */}
+                        <div className="bg-gradient-to-br from-blue-700 via-indigo-800 to-blue-900 p-8 text-white relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-3xl"></div>
+                            <div className="relative z-10">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <span className="bg-blue-400/20 text-blue-100 px-3 py-1 rounded-full text-xs font-bold border border-blue-400/30">2026 Edition</span>
+                                    <span className="bg-amber-400 text-slate-900 px-3 py-1 rounded-full text-xs flex items-center gap-1 font-bold">
+                                        <Icon name="sparkles" size={14} /> AI CONSULTANT
+                                    </span>
+                                </div>
+                                <h1 className="text-4xl font-black mb-2 tracking-tight">AI 영상 제작 마스터 가이드</h1>
+                                <p className="text-blue-100 opacity-90 text-lg font-medium">7인 스터디 그룹을 위한 최적의 툴 선정 및 프로젝트 컨설팅</p>
+                            </div>
+                        </div>
 
-          {/* Slide 2: Platform Comparison */}
-          {activeTab === '2' && (
-            <div className="animate-in slide-in-from-bottom-4 duration-500">
-              <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
-                <span className="bg-indigo-600 text-white w-10 h-10 rounded-xl flex items-center justify-center text-lg">02</span> 
-                플랫폼 vs 개별 제작툴 전략 분석
-              </h2>
-              <div className="grid md:grid-cols-2 gap-8">
-                <div className="bg-white rounded-2xl border-2 border-indigo-200 overflow-hidden shadow-lg">
-                  <div className="bg-indigo-600 p-4 text-white font-bold flex justify-between items-center">
-                    <span>멀티 플랫폼 전략</span>
-                    <span className="bg-white text-indigo-700 px-2 py-0.5 rounded text-xs font-black">가성비 특화</span>
-                  </div>
-                  <div className="p-6 space-y-4">
-                    <p className="text-sm text-slate-500 mb-4">Higgsfield, Genspark 등 여러 엔진을 통합 제공하는 서비스</p>
-                    <ul className="space-y-4">
-                      <li className="flex items-start gap-3 bg-indigo-50 p-3 rounded-lg">
-                        <div className="bg-indigo-200 p-1 rounded-full text-indigo-700 mt-0.5"><ChevronRight size={14} /></div>
-                        <span className="text-sm text-slate-800"><strong>구독료 절감:</strong> 단일 구독으로 Kling, Veo 등 고가 엔진 동시 활용</span>
-                      </li>
-                      <li className="flex items-start gap-3 bg-indigo-50 p-3 rounded-lg">
-                        <div className="bg-indigo-200 p-1 rounded-full text-indigo-700 mt-0.5"><ChevronRight size={14} /></div>
-                        <span className="text-sm text-slate-800"><strong>범용성:</strong> 프로젝트 주제에 따라 최적의 모델을 매번 선택 가능</span>
-                      </li>
-                      <li className="flex items-start gap-3 bg-red-50 p-3 rounded-lg border border-red-100">
-                        <span className="text-sm text-red-700 font-medium">⚠️ <strong>미세 제어 부족:</strong> 개별 툴의 하이엔드 수동 기능(모션 브러시 등)은 일부 제한될 수 있음</span>
-                      </li>
-                    </ul>
-                  </div>
-                </div>
+                        {/* Navigation Tabs */}
+                        <div className="flex border-b bg-white sticky top-0 z-20 overflow-x-auto no-scrollbar">
+                            <TabButton id="1" label="주요 툴 비교" iconName="monitor" />
+                            <TabButton id="2" label="플랫폼 vs 개별툴" iconName="zap" />
+                            <TabButton id="3" label="한국어 튜토리얼" iconName="play-circle" />
+                            <TabButton id="4" label="추천 운영안" iconName="briefcase" />
+                            <TabButton id="5" label="✨ AI 컨설턴트" iconName="message-square" />
+                        </div>
 
-                <div className="bg-white rounded-2xl border-2 border-slate-200 overflow-hidden shadow-lg">
-                  <div className="bg-slate-700 p-4 text-white font-bold flex justify-between items-center">
-                    <span>개별 제작툴 전략</span>
-                    <span className="bg-white text-slate-700 px-2 py-0.5 rounded text-xs font-black">전문성 특화</span>
-                  </div>
-                  <div className="p-6 space-y-4">
-                    <p className="text-sm text-slate-500 mb-4">Runway, Vrew, Kling 등 자체 엔진을 고도화한 서비스</p>
-                    <ul className="space-y-4">
-                      <li className="flex items-start gap-3 bg-slate-50 p-3 rounded-lg">
-                        <div className="bg-slate-200 p-1 rounded-full text-slate-700 mt-0.5"><ChevronRight size={14} /></div>
-                        <span className="text-sm text-slate-800"><strong>딥 컨트롤:</strong> 픽셀 단위 편집, 정교한 카메라 워킹 등 전문 기능 완비</span>
-                      </li>
-                      <li className="flex items-start gap-3 bg-slate-50 p-3 rounded-lg">
-                        <div className="bg-slate-200 p-1 rounded-full text-slate-700 mt-0.5"><ChevronRight size={14} /></div>
-                        <span className="text-sm text-slate-800"><strong>독보적 화질:</strong> 특정 엔진에 최적화된 최대 성능의 결과물 도출</span>
-                      </li>
-                      <li className="flex items-start gap-3 bg-red-50 p-3 rounded-lg border border-red-100">
-                        <span className="text-sm text-red-700 font-medium">⚠️ <strong>비용 누적:</strong> 스터디 그룹 예산으로 여러 개별 툴을 구독하기엔 부담</span>
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+                        {/* Content Area */}
+                        <div className="p-6 md:p-10">
+                            
+                            {/* Slide 1: Comparison Table */}
+                            {activeTab === '1' && (
+                                <div className="animate-in slide-in-from-bottom-4 duration-500">
+                                    <div className="flex items-center justify-between mb-8">
+                                        <h2 className="text-2xl font-bold flex items-center gap-3">
+                                            <span className="bg-blue-600 text-white w-10 h-10 rounded-xl flex items-center justify-center text-lg text-white">01</span> 
+                                            2026년 AI 영상 제작 툴 통합 비교
+                                        </h2>
+                                    </div>
+                                    <div className="overflow-x-auto rounded-2xl border border-slate-200 shadow-sm">
+                                        <table className="w-full text-sm text-left">
+                                            <thead className="bg-slate-50 text-slate-600 border-b">
+                                                <tr>
+                                                    <th className="px-6 py-4 font-bold uppercase tracking-wider">카테고리</th>
+                                                    <th className="px-6 py-4 font-bold uppercase tracking-wider">제작 툴</th>
+                                                    <th className="px-6 py-4 font-bold uppercase tracking-wider">핵심 특징</th>
+                                                    <th className="px-6 py-4 font-bold uppercase tracking-wider text-right">월 요금 (Monthly)</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100">
+                                                {tools.map((tool, idx) => (
+                                                    <tr key={idx} className="hover:bg-blue-50/30 transition-colors group">
+                                                        <td className="px-6 py-4 font-medium text-slate-500">{tool.category}</td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex flex-col">
+                                                                <span className="font-bold text-slate-900 group-hover:text-blue-700 transition-colors">{tool.name}</span>
+                                                                <a href={tool.url} target="_blank" className="text-[10px] text-blue-500 hover:underline">Official Site →</a>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-slate-600 leading-relaxed">{tool.features}</td>
+                                                        <td className="px-6 py-4 font-bold text-blue-700 text-right">{tool.cost}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div className="mt-6 flex items-start gap-2 bg-amber-50 p-4 rounded-xl text-amber-800 text-sm border border-amber-100">
+                                        <Icon name="info" size={18} className="shrink-0 mt-0.5" />
+                                        <p><strong>참고:</strong> OpenAI Sora는 2026년 4월 서비스 종료됨에 따라 비교에서 제외되었습니다. Sora의 강력한 대안으로 Google Veo 3.1과 Kling AI가 꼽히고 있습니다.</p>
+                                    </div>
+                                </div>
+                            )}
 
-          {/* Slide 3: Tutorials */}
-          {activeTab === '3' && (
-            <div className="animate-in slide-in-from-bottom-4 duration-500">
-              <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
-                <span className="bg-red-600 text-white w-10 h-10 rounded-xl flex items-center justify-center text-lg">03</span> 
-                실전 한국어 튜토리얼 아카이브
-              </h2>
-              <div className="grid md:grid-cols-2 gap-4">
-                {tutorials.map((video, idx) => (
-                  <a 
-                    key={idx} 
-                    href={video.link} 
-                    target="_blank" 
-                    className="group flex items-center p-6 bg-white border-2 border-slate-100 rounded-2xl hover:border-red-400 hover:shadow-xl transition-all"
-                  >
-                    <div className="bg-red-100 p-4 rounded-xl text-red-600 group-hover:bg-red-600 group-hover:text-white transition-all">
-                      <PlayCircle size={32} />
+                            {/* Slide 2: Platform Comparison */}
+                            {activeTab === '2' && (
+                                <div className="animate-in slide-in-from-bottom-4 duration-500">
+                                    <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
+                                        <span className="bg-indigo-600 text-white w-10 h-10 rounded-xl flex items-center justify-center text-lg text-white">02</span> 
+                                        플랫폼 vs 개별 제작툴 전략 분석
+                                    </h2>
+                                    <div className="grid md:grid-cols-2 gap-8">
+                                        <div className="bg-white rounded-2xl border-2 border-indigo-200 overflow-hidden shadow-lg">
+                                            <div className="bg-indigo-600 p-4 text-white font-bold flex justify-between items-center">
+                                                <span>멀티 플랫폼 전략</span>
+                                                <span className="bg-white text-indigo-700 px-2 py-0.5 rounded text-xs font-black">가성비 특화</span>
+                                            </div>
+                                            <div className="p-6 space-y-4">
+                                                <p className="text-sm text-slate-500 mb-4">Higgsfield, Genspark 등 여러 엔진을 통합 제공하는 서비스</p>
+                                                <ul className="space-y-4">
+                                                    <li className="flex items-start gap-3 bg-indigo-50 p-3 rounded-lg">
+                                                        <div className="bg-indigo-200 p-1 rounded-full text-indigo-700 mt-0.5"><Icon name="chevron-right" size={14} /></div>
+                                                        <span className="text-sm text-slate-800"><strong>구독료 절감:</strong> 단일 구독으로 Kling, Veo 등 고가 엔진 동시 활용</span>
+                                                    </li>
+                                                    <li className="flex items-start gap-3 bg-indigo-50 p-3 rounded-lg">
+                                                        <div className="bg-indigo-200 p-1 rounded-full text-indigo-700 mt-0.5"><Icon name="chevron-right" size={14} /></div>
+                                                        <span className="text-sm text-slate-800"><strong>범용성:</strong> 프로젝트 주제에 따라 최적의 모델을 매번 선택 가능</span>
+                                                    </li>
+                                                    <li className="flex items-start gap-3 bg-red-50 p-3 rounded-lg border border-red-100">
+                                                        <span className="text-sm text-red-700 font-medium">⚠️ <strong>미세 제어 부족:</strong> 개별 툴의 하이엔드 수동 기능(모션 브러시 등)은 일부 제한될 수 있음</span>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-white rounded-2xl border-2 border-slate-200 overflow-hidden shadow-lg">
+                                            <div className="bg-slate-700 p-4 text-white font-bold flex justify-between items-center">
+                                                <span>개별 제작툴 전략</span>
+                                                <span className="bg-white text-slate-700 px-2 py-0.5 rounded text-xs font-black">전문성 특화</span>
+                                            </div>
+                                            <div className="p-6 space-y-4">
+                                                <p className="text-sm text-slate-500 mb-4">Runway, Vrew, Kling 등 자체 엔진을 고도화한 서비스</p>
+                                                <ul className="space-y-4">
+                                                    <li className="flex items-start gap-3 bg-slate-50 p-3 rounded-lg">
+                                                        <div className="bg-slate-200 p-1 rounded-full text-slate-700 mt-0.5"><Icon name="chevron-right" size={14} /></div>
+                                                        <span className="text-sm text-slate-800"><strong>딥 컨트롤:</strong> 픽셀 단위 편집, 정교한 카메라 워킹 등 전문 기능 완비</span>
+                                                    </li>
+                                                    <li className="flex items-start gap-3 bg-slate-50 p-3 rounded-lg">
+                                                        <div className="bg-slate-200 p-1 rounded-full text-slate-700 mt-0.5"><Icon name="chevron-right" size={14} /></div>
+                                                        <span className="text-sm text-slate-800"><strong>독보적 화질:</strong> 특정 엔진에 최적화된 최대 성능의 결과물 도출</span>
+                                                    </li>
+                                                    <li className="flex items-start gap-3 bg-red-50 p-3 rounded-lg border border-red-100">
+                                                        <span className="text-sm text-red-700 font-medium">⚠️ <strong>비용 누적:</strong> 스터디 그룹 예산으로 여러 개별 툴을 구독하기엔 부담</span>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Slide 3: Tutorials */}
+                            {activeTab === '3' && (
+                                <div className="animate-in slide-in-from-bottom-4 duration-500">
+                                    <h2 className="text-2xl font-bold mb-8 flex items-center gap-3">
+                                        <span className="bg-red-600 text-white w-10 h-10 rounded-xl flex items-center justify-center text-lg text-white">03</span> 
+                                        실전 한국어 튜토리얼 아카이브
+                                    </h2>
+                                    <div className="grid md:grid-cols-2 gap-4">
+                                        {tutorials.map((video, idx) => (
+                                            <a 
+                                                key={idx} 
+                                                href={video.link} 
+                                                target="_blank" 
+                                                className="group flex items-center p-6 bg-white border-2 border-slate-100 rounded-2xl hover:border-red-400 hover:shadow-xl transition-all"
+                                            >
+                                                <div className="bg-red-100 p-4 rounded-xl text-red-600 group-hover:bg-red-600 group-hover:text-white transition-all">
+                                                    <Icon name="play-circle" size={32} />
+                                                </div>
+                                                <div className="ml-5">
+                                                    <h4 className="font-extrabold text-slate-900 group-hover:text-red-600 transition-colors">{video.title}</h4>
+                                                    <p className="text-xs text-slate-400 mt-1 uppercase font-bold tracking-taller">YouTube Tutorial &bull; 2026 Ver.</p>
+                                                </div>
+                                                <Icon name="chevron-right" size={18} className="ml-auto text-slate-300 group-hover:translate-x-1 transition-transform" />
+                                            </a>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Slide 4: Group Recommendation */}
+                            {activeTab === '4' && (
+                                <div className="animate-in slide-in-from-bottom-4 duration-500 space-y-8">
+                                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                                        <h2 className="text-2xl font-bold flex items-center gap-3">
+                                            <span className="bg-emerald-600 text-white w-10 h-10 rounded-xl flex items-center justify-center text-lg text-white">04</span> 
+                                            7인 스터디 그룹 예산 최적화 로드맵
+                                        </h2>
+                                        <div className="bg-emerald-50 px-6 py-3 rounded-2xl border border-emerald-100 text-right">
+                                            <span className="text-xs font-bold text-emerald-600 block mb-1 uppercase">Total Budget</span>
+                                            <span className="text-2xl font-black text-emerald-700">300,000 KRW</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid md:grid-cols-3 gap-6 text-slate-900">
+                                        <div className="bg-white rounded-2xl border-2 border-emerald-100 overflow-hidden hover:shadow-xl transition-all flex flex-col">
+                                            <div className="bg-emerald-600 text-white p-3 text-center font-bold text-sm uppercase">방안 1: 창작 집중형</div>
+                                            <div className="p-6 space-y-6 flex-1">
+                                                <div className="space-y-2">
+                                                    <div className="flex justify-between text-sm text-slate-600"><span>Higgsfield Ultra ($99)</span><span className="font-bold">14.0만</span></div>
+                                                    <div className="flex justify-between text-sm text-slate-600"><span>추가 크레딧 구매</span><span className="font-bold">16.0만</span></div>
+                                                    <hr className="my-2 border-slate-100" />
+                                                    <div className="flex justify-between font-bold text-emerald-700"><span>합계</span><span>30.0만</span></div>
+                                                </div>
+                                                <p className="text-xs text-slate-500 leading-relaxed">자막 편집은 Vrew 무료 버전을 사용하며, 공용 계정 하나로 모든 스터디원이 수천 개의 영상을 무제한 생성하는 실습에 집중합니다.</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-white rounded-2xl border-2 border-blue-100 overflow-hidden hover:shadow-xl transition-all flex flex-col">
+                                            <div className="bg-blue-600 text-white p-3 text-center font-bold text-sm uppercase">방안 2: 기획 자동화형</div>
+                                            <div className="p-6 space-y-6 flex-1">
+                                                <div className="space-y-2">
+                                                    <div className="flex justify-between text-sm text-slate-600"><span>Genspark Plus ($25)</span><span className="font-bold">3.5만</span></div>
+                                                    <div className="flex justify-between text-sm text-slate-600"><span>Higgsfield Ultra ($99)</span><span className="font-bold">14.0만</span></div>
+                                                    <div className="flex justify-between text-sm text-slate-600"><span>예비비/간식</span><span className="font-bold">12.5만</span></div>
+                                                    <hr className="my-2 border-slate-100" />
+                                                    <div className="flex justify-between font-bold text-blue-700"><span>합계</span><span>30.0만</span></div>
+                                                </div>
+                                                <p className="text-xs text-slate-500 leading-relaxed">AI 에이전트(Genspark)로 기획과 대본을 짜고, Higgsfield로 제작하는 협업 워크플로우를 익히기에 최적입니다.</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-white rounded-2xl border-4 border-amber-400 shadow-2xl scale-105 z-10 flex flex-col relative overflow-hidden">
+                                            <div className="bg-amber-400 text-slate-900 p-3 text-center font-black text-sm uppercase flex items-center justify-center gap-2">
+                                                <Icon name="sparkles" size={16} /> BEST: 실무 완성형
+                                            </div>
+                                            <div className="p-6 space-y-6 flex-1 bg-amber-50/20">
+                                                <div className="space-y-2">
+                                                    <div className="flex justify-between text-sm text-slate-600"><span>Vrew 7인 (Standard)</span><span className="font-bold">16.8만</span></div>
+                                                    <div className="flex justify-between text-sm text-slate-600"><span>Higgsfield Ultra ($99)</span><span className="font-bold">14.0만</span></div>
+                                                    <hr className="my-2 border-amber-200" />
+                                                    <div className="flex justify-between font-bold text-amber-700"><span>합계 (소폭 초과)</span><span>30.8만</span></div>
+                                                </div>
+                                                <p className="text-xs text-amber-900 leading-relaxed font-medium bg-white/60 p-3 rounded-xl border border-amber-200">입문자에게 가장 추천합니다. 각자 자신의 전용 편집 툴을 가질 때 학습 의욕이 높고, 워터마크 없는 전문적인 완성본을 도출할 수 있습니다.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Slide 5: AI Consultant */}
+                            {activeTab === '5' && (
+                                <div className="animate-in slide-in-from-bottom-4 duration-500 max-w-4xl mx-auto">
+                                    <div className="text-center mb-10">
+                                        <span className="bg-amber-400 text-slate-900 px-4 py-1 rounded-full font-bold text-xs mb-4 inline-block">GEMINI-2.5 POWERED</span>
+                                        <h2 className="text-3xl font-black text-slate-900 mb-4 flex items-center justify-center gap-3">
+                                            <Icon name="sparkles" size={32} className="text-amber-500" /> ✨ AI 프로젝트 컨설턴트
+                                        </h2>
+                                        <p className="text-slate-500">생각하고 계신 영상 아이디어를 입력하세요. AI가 최적의 툴과 전략을 제안해 드립니다.</p>
+                                    </div>
+
+                                    <div className="p-8 bg-white border-2 border-slate-200 shadow-xl rounded-3xl space-y-6">
+                                        <div className="space-y-4">
+                                            <label className="text-sm font-bold text-slate-700 block ml-1">어떤 영상을 만들고 싶으신가요?</label>
+                                            <textarea 
+                                                className="w-full h-32 p-4 rounded-2xl bg-slate-50 border-2 border-slate-100 focus:border-blue-400 focus:ring-0 outline-none transition-all text-sm resize-none text-slate-800 placeholder:text-slate-400"
+                                                placeholder="예: 우리 동네 맛집을 소개하는 시네마틱한 60초 쇼츠 영상을 만들고 싶어. 실제 촬영 영상은 없고 프롬프트로만 제작할 거야."
+                                                value={userPrompt}
+                                                onChange={(e) => setUserPrompt(e.target.value)}
+                                            />
+                                            <button 
+                                                onClick={handleConsulting}
+                                                disabled={isLoading || !userPrompt.trim()}
+                                                className="w-full h-14 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-black flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50 shadow-lg"
+                                            >
+                                                {isLoading ? (
+                                                    <Icon name="loader-2" size={20} className="animate-spin text-white" />
+                                                ) : (
+                                                    <>✨ 컨설팅 시작하기</>
+                                                )}
+                                            </button>
+                                        </div>
+
+                                        {error && (
+                                            <div className="p-4 bg-red-50 border border-red-100 text-red-600 rounded-2xl flex items-center gap-2 text-sm">
+                                                <Icon name="info" size={16} />
+                                                {error}
+                                            </div>
+                                        )}
+
+                                        {aiResult && !isLoading && (
+                                            <div className="mt-8 animate-in fade-in zoom-in duration-500">
+                                                <hr className="mb-6 border-slate-100" />
+                                                <div className="flex items-center gap-2 mb-4 text-blue-700 font-black">
+                                                    <Icon name="message-square" size={20} />
+                                                    <h4>AI 전문가의 추천 가이드</h4>
+                                                </div>
+                                                <div className="bg-slate-50 p-6 rounded-2xl text-sm leading-relaxed text-slate-700 whitespace-pre-wrap border border-slate-100 shadow-inner overflow-auto max-h-[500px]">
+                                                    {aiResult}
+                                                </div>
+                                                <div className="mt-4 flex justify-end">
+                                                    <button 
+                                                        className="text-xs text-slate-400 hover:text-blue-600 transition-colors font-medium" 
+                                                        onClick={() => setAiResult(null)}
+                                                    >
+                                                        새 상담 시작하기
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="mt-8 grid md:grid-cols-2 gap-4">
+                                        <div className="p-4 rounded-2xl bg-blue-50 border border-blue-100 flex gap-3">
+                                            <div className="bg-blue-100 p-2 rounded-xl h-fit text-blue-700"><Icon name="info" size={16} /></div>
+                                            <div className="text-xs leading-relaxed">
+                                                <p className="font-bold text-blue-800 mb-1">상담 팁</p>
+                                                <p className="text-blue-600">구체적인 장르(SF, 드라마), 타겟 플랫폼(YouTube, SNS), 보유한 소스 유무를 포함하면 더 정확한 결과가 나옵니다.</p>
+                                            </div>
+                                        </div>
+                                        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-100 flex gap-3">
+                                            <div className="bg-amber-100 p-2 rounded-xl h-fit text-amber-700"><Icon name="zap" size={16} /></div>
+                                            <div className="text-xs leading-relaxed">
+                                                <p className="font-bold text-amber-800 mb-1">예산 최적화</p>
+                                                <p className="text-amber-600">AI는 귀하의 스터디 그룹 예산인 30만원을 고려하여 가장 경제적인 플랜 조합을 우선 추천합니다.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="bg-slate-50 p-6 border-t border-slate-200 text-center">
+                            <p className="text-xs text-slate-400 font-medium">본 가이드는 2026년 4월 최신 정보를 바탕으로 제작되었습니다 &bull; Generated by Gemini with LLM Consulting</p>
+                        </div>
                     </div>
-                    <div className="ml-5">
-                      <h4 className="font-extrabold text-slate-900 group-hover:text-red-600 transition-colors">{video.title}</h4>
-                      <p className="text-xs text-slate-400 mt-1 uppercase font-bold tracking-taller">YouTube Tutorial &bull; 2026 Ver.</p>
-                    </div>
-                    <ChevronRight className="ml-auto text-slate-300 group-hover:translate-x-1 transition-transform" />
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Slide 4: Group Recommendation */}
-          {activeTab === '4' && (
-            <div className="animate-in slide-in-from-bottom-4 duration-500 space-y-8">
-              <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-                <h2 className="text-2xl font-bold flex items-center gap-3">
-                  <span className="bg-emerald-600 text-white w-10 h-10 rounded-xl flex items-center justify-center text-lg">04</span> 
-                  7인 스터디 그룹 예산 최적화 로드맵
-                </h2>
-                <div className="bg-emerald-50 px-6 py-3 rounded-2xl border border-emerald-100 text-right">
-                  <span className="text-xs font-bold text-emerald-600 block mb-1 uppercase">Total Budget</span>
-                  <span className="text-2xl font-black text-emerald-700">300,000 KRW</span>
                 </div>
-              </div>
+            );
+        };
 
-              <div className="grid md:grid-cols-3 gap-6">
-                <div className="bg-white rounded-2xl border-2 border-emerald-100 overflow-hidden hover:shadow-xl transition-all flex flex-col">
-                  <div className="bg-emerald-600 text-white p-3 text-center font-bold text-sm uppercase">방안 1: 창작 집중형</div>
-                  <div className="p-6 space-y-6 flex-1">
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm text-slate-600"><span>Higgsfield Ultra ($99)</span><span className="font-bold">14.0만</span></div>
-                      <div className="flex justify-between text-sm text-slate-600"><span>추가 크레딧 구매</span><span className="font-bold">16.0만</span></div>
-                      <hr className="my-2 border-slate-100" />
-                      <div className="flex justify-between font-bold text-emerald-700"><span>합계</span><span>30.0만</span></div>
-                    </div>
-                    <p className="text-xs text-slate-500 leading-relaxed">자막 편집은 Vrew 무료 버전을 사용하며, 공용 계정 하나로 모든 스터디원이 수천 개의 영상을 무제한 생성하는 실습에 집중합니다.</p>
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-2xl border-2 border-blue-100 overflow-hidden hover:shadow-xl transition-all flex flex-col">
-                  <div className="bg-blue-600 text-white p-3 text-center font-bold text-sm uppercase">방안 2: 기획 자동화형</div>
-                  <div className="p-6 space-y-6 flex-1">
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm text-slate-600"><span>Genspark Plus ($25)</span><span className="font-bold">3.5만</span></div>
-                      <div className="flex justify-between text-sm text-slate-600"><span>Higgsfield Ultra ($99)</span><span className="font-bold">14.0만</span></div>
-                      <div className="flex justify-between text-sm text-slate-600"><span>예비비/간식</span><span className="font-bold">12.5만</span></div>
-                      <hr className="my-2 border-slate-100" />
-                      <div className="flex justify-between font-bold text-blue-700"><span>합계</span><span>30.0만</span></div>
-                    </div>
-                    <p className="text-xs text-slate-500 leading-relaxed">AI 에이전트(Genspark)로 기획과 대본을 짜고, Higgsfield로 제작하는 협업 워크플로우를 익히기에 최적입니다.</p>
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-2xl border-4 border-amber-400 shadow-2xl scale-105 z-10 flex flex-col relative overflow-hidden">
-                  <div className="bg-amber-400 text-slate-900 p-3 text-center font-black text-sm uppercase flex items-center justify-center gap-2">
-                    <Sparkles size={16} /> BEST: 실무 완성형
-                  </div>
-                  <div className="p-6 space-y-6 flex-1 bg-amber-50/20">
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm text-slate-600"><span>Vrew 7인 (Standard)</span><span className="font-bold">16.8만</span></div>
-                      <div className="flex justify-between text-sm text-slate-600"><span>Higgsfield Ultra ($99)</span><span className="font-bold">14.0만</span></div>
-                      <hr className="my-2 border-amber-200" />
-                      <div className="flex justify-between font-bold text-amber-700"><span>합계 (소폭 초과)</span><span>30.8만</span></div>
-                    </div>
-                    <p className="text-xs text-amber-900 leading-relaxed font-medium bg-white/60 p-3 rounded-xl border border-amber-200">입문자에게 가장 추천합니다. 각자 자신의 전용 편집 툴을 가질 때 학습 의욕이 높고, 워터마크 없는 전문적인 완성본을 도출할 수 있습니다.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Slide 5: AI Consultant */}
-          {activeTab === '5' && (
-            <div className="animate-in slide-in-from-bottom-4 duration-500 max-w-4xl mx-auto">
-              <div className="text-center mb-10">
-                <span className="bg-amber-400 text-slate-900 px-4 py-1 rounded-full font-bold text-xs mb-4 inline-block">GEMINI-2.5 POWERED</span>
-                <h2 className="text-3xl font-black text-slate-900 mb-4 flex items-center justify-center gap-3">
-                  <Sparkles className="text-amber-500" size={32} /> ✨ AI 프로젝트 컨설턴트
-                </h2>
-                <p className="text-slate-500">생각하고 계신 영상 아이디어를 입력하세요. AI가 최적의 툴과 전략을 제안해 드립니다.</p>
-              </div>
-
-              <div className="p-8 bg-white border-2 border-slate-200 shadow-xl rounded-3xl space-y-6">
-                <div className="space-y-4">
-                  <label className="text-sm font-bold text-slate-700 block ml-1">어떤 영상을 만들고 싶으신가요?</label>
-                  <textarea 
-                    className="w-full h-32 p-4 rounded-2xl bg-slate-50 border-2 border-slate-100 focus:border-blue-400 focus:ring-0 outline-none transition-all text-sm resize-none text-slate-800 placeholder:text-slate-400"
-                    placeholder="예: 우리 동네 맛집을 소개하는 시네마틱한 60초 쇼츠 영상을 만들고 싶어. 실제 촬영 영상은 없고 프롬프트로만 제작할 거야."
-                    value={userPrompt}
-                    onChange={(e) => setUserPrompt(e.target.value)}
-                  />
-                  <button 
-                    onClick={handleConsulting}
-                    disabled={isLoading || !userPrompt.trim()}
-                    className="w-full h-14 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-black flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50 shadow-lg"
-                  >
-                    {isLoading ? (
-                      <Loader2 className="animate-spin" />
-                    ) : (
-                      <>✨ 컨설팅 시작하기</>
-                    )}
-                  </button>
-                </div>
-
-                {error && (
-                  <div className="p-4 bg-red-50 border border-red-100 text-red-600 rounded-2xl flex items-center gap-2 text-sm">
-                    <Info size={16} />
-                    {error}
-                  </div>
-                )}
-
-                {aiResult && !isLoading && (
-                  <div className="mt-8 animate-in fade-in zoom-in duration-500">
-                    <hr className="mb-6 border-slate-100" />
-                    <div className="flex items-center gap-2 mb-4 text-blue-700">
-                      <MessageSquare size={20} />
-                      <h4 className="font-black">AI 전문가의 추천 가이드</h4>
-                    </div>
-                    <div className="bg-slate-50 p-6 rounded-2xl text-sm leading-relaxed text-slate-700 whitespace-pre-wrap border border-slate-100 shadow-inner overflow-auto max-h-[500px]">
-                      {aiResult}
-                    </div>
-                    <div className="mt-4 flex justify-end">
-                      <button 
-                        className="text-xs text-slate-400 hover:text-blue-600 transition-colors font-medium" 
-                        onClick={() => setAiResult(null)}
-                      >
-                        새 상담 시작하기
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-8 grid md:grid-cols-2 gap-4">
-                <div className="p-4 rounded-2xl bg-blue-50 border border-blue-100 flex gap-3">
-                  <div className="bg-blue-100 p-2 rounded-xl h-fit"><Info size={16} className="text-blue-700" /></div>
-                  <div className="text-xs leading-relaxed">
-                    <p className="font-bold text-blue-800 mb-1">상담 팁</p>
-                    <p className="text-blue-600">구체적인 장르(SF, 드라마), 타겟 플랫폼(YouTube, SNS), 보유한 소스 유무를 포함하면 더 정확한 결과가 나옵니다.</p>
-                  </div>
-                </div>
-                <div className="p-4 rounded-2xl bg-amber-50 border border-amber-100 flex gap-3">
-                  <div className="bg-amber-100 p-2 rounded-xl h-fit"><Zap size={16} className="text-amber-700" /></div>
-                  <div className="text-xs leading-relaxed">
-                    <p className="font-bold text-amber-800 mb-1">예산 최적화</p>
-                    <p className="text-amber-600">AI는 귀하의 스터디 그룹 예산인 30만원을 고려하여 가장 경제적인 플랜 조합을 우선 추천합니다.</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="bg-slate-50 p-6 border-t border-slate-200 text-center">
-          <p className="text-xs text-slate-400 font-medium">본 가이드는 2026년 4월 최신 정보를 바탕으로 제작되었습니다 &bull; Generated by Gemini with LLM Consulting</p>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-export default App;
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
